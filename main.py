@@ -182,8 +182,8 @@ def sort_nodes(nodes):
 # 🏷 OUTPUT
 # =====================================================
 
-def format_node(cfg, index, latency):
-    return f"#{index} | {latency}ms | {cfg}"
+     def format_node(cfg):
+    return cfg
 
 
 # =====================================================
@@ -215,7 +215,7 @@ async def main():
 
         final = []
         for i, (cfg, lat) in enumerate(checked, start=1):
-            final.append(format_node(cfg, i, lat))
+            final.append(cfg)
 
         if SHUFFLE:
             random.shuffle(final)
