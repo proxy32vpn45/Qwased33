@@ -182,7 +182,7 @@ def sort_nodes(nodes):
 # 🏷 OUTPUT
 # =====================================================
 
-     def format_node(cfg):
+def format_node(cfg):
     return cfg
 
 
