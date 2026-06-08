@@ -18,19 +18,18 @@ SOURCE_SUBS = [
     "https://raw.githubusercontent.com/VansFenix/WildVF-/refs/heads/main/VansFenix%231",
     "https://raw.githubusercontent.com/whoahaow/rjsxrd/refs/heads/main/githubmirror/bypass-unsecure/bypass-unsecure-all.txt",
     "https://gist.githubusercontent.com/pidarasuebisov-afk/e220b44264242d1a97c0908aba091edd/raw/PKN%20cocnyL"
-    
 ]
 
 OUTPUT_FILE = "output.txt"
 
-TIMEOUT = 1.5
+TIMEOUT = 2
 MAX_TASKS = 300
 
 REMOVE_DUPLICATES = True
 SHUFFLE = False
 
 # =====================================================
-# 🌐 SUPPORTED ПРОТОКОЛЫ
+# 🌐 SUPPORTED
 # =====================================================
 
 SUPPORTED = [
@@ -46,7 +45,7 @@ SUPPORTED = [
 ]
 
 # =====================================================
-# 📥 ЗАГРУЗКА
+# 📥 FETCH
 # =====================================================
 
 async def fetch(session, url):
@@ -57,25 +56,38 @@ async def fetch(session, url):
         return ""
 
 
+# =====================================================
+# 🔓 DECODE (НЕ ЛОМАЕТ ДАННЫЕ)
+# =====================================================
+
 def decode(text):
     try:
-        decoded = base64.b64decode(text).decode("utf-8", errors="ignore")
-        line = line.strip()
-if any(p in line for p in SUPPORTED):
-    return line
-            return decoded
+        return base64.b64decode(text).decode("utf-8", errors="ignore")
     except:
-        pass
-    return text
+        return text
 
+
+# =====================================================
+# 🔎 EXTRACT (ИСПРАВЛЕНО)
+# =====================================================
 
 def extract(text):
-    return [
-        line.strip()
-        for line in text.splitlines()
-        if any(line.startswith(p) for p in SUPPORTED)
-    ]
+    lines = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
 
+        # мягкий фильтр — НЕ жёсткий startswith
+        if any(p in line for p in SUPPORTED):
+            lines.append(line)
+
+    return lines
+
+
+# =====================================================
+# 📦 LOAD SOURCES
+# =====================================================
 
 async def load_sources(session):
     all_nodes = []
@@ -90,16 +102,10 @@ async def load_sources(session):
 
     return all_nodes
 
-# =====================================================
-# ⚡ ЛЁГКАЯ ПРОВЕРКА (УЛУЧШЕННАЯ)
-# =====================================================
 
-def detect_type(cfg):
-    for p in SUPPORTED:
-        if cfg.startswith(p):
-            return p
-    return "unknown"
-
+# =====================================================
+# ⚡ TCP CHECK (МЯГКИЙ)
+# =====================================================
 
 async def tcp_check(host, port):
     try:
@@ -122,44 +128,34 @@ async def tcp_check(host, port):
         return None
 
 
+# =====================================================
+# 🧠 CHECK NODE (НЕ УБИВАЕТ ВСЁ)
+# =====================================================
+
 async def check_node(cfg):
     try:
         if "@" not in cfg:
             return None
 
-        proto = detect_type(cfg)
-
         host = cfg.split("@")[1].split(":")[0]
-        port = int(cfg.split("@")[1].split("#")[0])
+        port_part = cfg.split(":")[-1]
+        port = int("".join([c for c in port_part if c.isdigit()]))
 
-        # =================================================
-        # 🔥 ОСНОВНАЯ ПРОВЕРКА
-        # =================================================
-        if proto in ["vless://", "vmess://", "trojan://", "ss://"]:
-            latency = await tcp_check(host, port)
-            if latency is None:
-                return None
-            return cfg, latency
+        latency = await tcp_check(host, port)
 
-        # =================================================
-        # 🌐 ЛЁГКАЯ ПРОВЕРКА ДЛЯ СЛОЖНЫХ
-        # =================================================
-        elif proto in ["hysteria://", "hysteria2://", "tuic://", "reality://"]:
-            latency = await tcp_check(host, port)
-            if latency is None:
-                return None
+        # 🔥 если проверка не удалась — НЕ выкидываем сразу
+        if latency is None:
+            latency = 9999  # плохой, но остаётся в списке
 
-            # добавляем небольшой штраф (чтобы было честнее)
-            latency += 250
-
-            return cfg, latency
-
-        else:
-            return None
+        return cfg, latency
 
     except:
         return None
 
+
+# =====================================================
+# 🔁 CHECK ALL
+# =====================================================
 
 async def check_all(nodes):
     sem = asyncio.Semaphore(MAX_TASKS)
@@ -173,19 +169,22 @@ async def check_all(nodes):
 
     return [r for r in res if r]
 
+
 # =====================================================
-# 📊 СОРТИРОВКА
+# 📊 SORT
 # =====================================================
 
 def sort_nodes(nodes):
     return sorted(nodes, key=lambda x: x[1])
 
+
 # =====================================================
-# 🏷 ВЫВОД (НЕ МЕНЯЕМ КОНФИГ)
+# 🏷 OUTPUT
 # =====================================================
 
-def format_node(cfg, index):
-    return f"#{index} | {cfg}"
+def format_node(cfg, index, latency):
+    return f"#{index} | {latency}ms | {cfg}"
+
 
 # =====================================================
 # 🚀 MAIN
@@ -205,13 +204,18 @@ async def main():
         print("⚡ Checking...")
         checked = await check_all(nodes)
 
-        print("✅ Alive:", len(checked))
+        print("✅ Checked:", len(checked))
+
+        # 🛡 fallback (чтобы output НЕ был пустой)
+        if not checked:
+            print("⚠️ No working nodes, saving raw list")
+            checked = [(n, 9999) for n in nodes]
 
         checked = sort_nodes(checked)
 
         final = []
         for i, (cfg, lat) in enumerate(checked, start=1):
-            final.append(format_node(cfg, i))
+            final.append(format_node(cfg, i, lat))
 
         if SHUFFLE:
             random.shuffle(final)
