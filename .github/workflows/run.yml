@@ -3,7 +3,7 @@ name: Run parser
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/10 * * * *"  # каждые 10 минут
+    - cron: "*/15 * * * *"  # каждые 10 минут
 
 jobs:
   build:
