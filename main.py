@@ -60,7 +60,9 @@ async def fetch(session, url):
 def decode(text):
     try:
         decoded = base64.b64decode(text).decode("utf-8", errors="ignore")
-        if any(p in decoded for p in SUPPORTED):
+        line = line.strip()
+if any(p in line for p in SUPPORTED):
+    return line
             return decoded
     except:
         pass
