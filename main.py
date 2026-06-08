@@ -5,36 +5,36 @@ import urllib.parse
 import random
 
 # =====================================================
-# ⚙️ НАСТРОЙКИ (CONFIG)
+# ⚙️ НАСТРОЙКИ
 # =====================================================
 
 SOURCE_SUBS = [
-    # 🔗 сюда вставляешь ссылки на подписки
+    # 🔗 вставь сюда свои ссылки на подписки
 ]
 
 OUTPUT_FILE = "output.txt"
 
-TIMEOUT = 1.5  # ⏱ таймаут проверки (сек)
-MAX_TASKS = 300  # ⚡ параллельные проверки
+TIMEOUT = 1.5
+MAX_TASKS = 300
 
-REMOVE_DUPLICATES = True  # 🧹 удалять дубликаты
-SHUFFLE = False  # 🔀 перемешивать результат
-
-SUPPORTED = ["vless://", "vmess://", "trojan://", "ss://"]
+REMOVE_DUPLICATES = True
+SHUFFLE = False
 
 # =====================================================
-# 🌍 ФЛАГИ СТРАН (много стран)
+# 🌐 SUPPORTED ПРОТОКОЛЫ
 # =====================================================
 
-FLAGS = {
-    "RU": "🇷🇺", "US": "🇺🇸", "DE": "🇩🇪", "NL": "🇳🇱",
-    "FR": "🇫🇷", "GB": "🇬🇧", "PL": "🇵🇱", "UA": "🇺🇦",
-    "JP": "🇯🇵", "SG": "🇸🇬", "CA": "🇨🇦", "TR": "🇹🇷",
-    "IT": "🇮🇹", "ES": "🇪🇸", "BR": "🇧🇷", "IN": "🇮🇳",
-    "CN": "🇨🇳", "KR": "🇰🇷", "SE": "🇸🇪", "FI": "🇫🇮",
-    "NO": "🇳🇴", "CH": "🇨🇭", "CZ": "🇨🇿", "RO": "🇷🇴",
-    "BG": "🇧🇬", "HU": "🇭🇺", "AE": "🇦🇪", "SA": "🇸🇦",
-}
+SUPPORTED = [
+    "vless://",
+    "vmess://",
+    "trojan://",
+    "ss://",
+    "ssr://",
+    "hysteria://",
+    "hysteria2://",
+    "tuic://",
+    "reality://",
+]
 
 # =====================================================
 # 📥 ЗАГРУЗКА
@@ -50,9 +50,9 @@ async def fetch(session, url):
 
 def decode(text):
     try:
-        d = base64.b64decode(text).decode("utf-8", errors="ignore")
-        if any(p in d for p in SUPPORTED):
-            return d
+        decoded = base64.b64decode(text).decode("utf-8", errors="ignore")
+        if any(p in decoded for p in SUPPORTED):
+            return decoded
     except:
         pass
     return text
@@ -80,17 +80,18 @@ async def load_sources(session):
     return all_nodes
 
 # =====================================================
-# ⚡ ЛЁГКАЯ ПРОВЕРКА (TCP)
+# ⚡ ЛЁГКАЯ ПРОВЕРКА (УЛУЧШЕННАЯ)
 # =====================================================
 
-async def check_node(cfg):
+def detect_type(cfg):
+    for p in SUPPORTED:
+        if cfg.startswith(p):
+            return p
+    return "unknown"
+
+
+async def tcp_check(host, port):
     try:
-        if "@" not in cfg:
-            return None
-
-        host = cfg.split("@")[1].split(":")[0]
-        port = int(cfg.split("@")[1].split("#")[0])
-
         loop = asyncio.get_running_loop()
         start = loop.time()
 
@@ -104,7 +105,46 @@ async def check_node(cfg):
         writer.close()
         await writer.wait_closed()
 
-        return cfg, latency
+        return latency
+
+    except:
+        return None
+
+
+async def check_node(cfg):
+    try:
+        if "@" not in cfg:
+            return None
+
+        proto = detect_type(cfg)
+
+        host = cfg.split("@")[1].split(":")[0]
+        port = int(cfg.split("@")[1].split("#")[0])
+
+        # =================================================
+        # 🔥 ОСНОВНАЯ ПРОВЕРКА
+        # =================================================
+        if proto in ["vless://", "vmess://", "trojan://", "ss://"]:
+            latency = await tcp_check(host, port)
+            if latency is None:
+                return None
+            return cfg, latency
+
+        # =================================================
+        # 🌐 ЛЁГКАЯ ПРОВЕРКА ДЛЯ СЛОЖНЫХ
+        # =================================================
+        elif proto in ["hysteria://", "hysteria2://", "tuic://", "reality://"]:
+            latency = await tcp_check(host, port)
+            if latency is None:
+                return None
+
+            # добавляем небольшой штраф (чтобы было честнее)
+            latency += 250
+
+            return cfg, latency
+
+        else:
+            return None
 
     except:
         return None
@@ -123,46 +163,18 @@ async def check_all(nodes):
     return [r for r in res if r]
 
 # =====================================================
-# 📊 СОРТИРОВКА (лучшие сверху)
+# 📊 СОРТИРОВКА
 # =====================================================
 
 def sort_nodes(nodes):
     return sorted(nodes, key=lambda x: x[1])
 
 # =====================================================
-# 🌍 ПРОСТОЕ ОПРЕДЕЛЕНИЕ СТРАНЫ
-# =====================================================
-
-def detect_country(cfg):
-    cfg = cfg.lower()
-
-    if "ru" in cfg:
-        return "RU"
-    if "us" in cfg:
-        return "US"
-    if "de" in cfg:
-        return "DE"
-    if "nl" in cfg:
-        return "NL"
-    if "fr" in cfg:
-        return "FR"
-    if "jp" in cfg:
-        return "JP"
-    if "pl" in cfg:
-        return "PL"
-
-    return "UN"
-
-# =====================================================
-# 🏷 ФОРМАТ ВЫВОДА
+# 🏷 ВЫВОД (НЕ МЕНЯЕМ КОНФИГ)
 # =====================================================
 
 def format_node(cfg, index):
-    country = detect_country(cfg)
-    flag = FLAGS.get(country, "🏳️")
-
-    name = f"#{index} {flag} {country} | {cfg}"
-    return name
+    return f"#{index} | {cfg}"
 
 # =====================================================
 # 🚀 MAIN
@@ -171,25 +183,24 @@ def format_node(cfg, index):
 async def main():
     async with aiohttp.ClientSession() as session:
 
-        print("📥 Загружаем подписки...")
+        print("📥 Loading...")
         nodes = await load_sources(session)
 
-        print("🔎 Найдено:", len(nodes))
+        print("🔎 Found:", len(nodes))
 
         if REMOVE_DUPLICATES:
             nodes = list(dict.fromkeys(nodes))
 
-        print("⚡ Проверяем...")
+        print("⚡ Checking...")
         checked = await check_all(nodes)
 
-        print("✅ Живых:", len(checked))
+        print("✅ Alive:", len(checked))
 
         checked = sort_nodes(checked)
 
         final = []
         for i, (cfg, lat) in enumerate(checked, start=1):
-            line = format_node(cfg, i)
-            final.append(line)
+            final.append(format_node(cfg, i))
 
         if SHUFFLE:
             random.shuffle(final)
@@ -197,7 +208,7 @@ async def main():
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
             f.write("\n".join(final))
 
-        print("📦 Готово →", OUTPUT_FILE)
+        print("📦 Saved →", OUTPUT_FILE)
 
 
 if __name__ == "__main__":
