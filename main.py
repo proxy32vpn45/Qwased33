@@ -17,7 +17,7 @@ SOURCE_SUBS = [
     "https://gitverse.ru/api/repos/flaafix/AetrisVPN/raw/branch/master/AetrisVPN.txt",
     "https://raw.githubusercontent.com/VansFenix/WildVF-/refs/heads/main/VansFenix%231",
     "https://raw.githubusercontent.com/whoahaow/rjsxrd/refs/heads/main/githubmirror/bypass-unsecure/bypass-unsecure-all.txt",
-    "
+    
     
 ]
 
