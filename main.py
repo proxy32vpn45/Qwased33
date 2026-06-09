@@ -20,7 +20,9 @@ SOURCE_SUBS = [
     "https://gist.githubusercontent.com/pidarasuebisov-afk/e220b44264242d1a97c0908aba091edd/raw/PKN%20cocnyL",
     "https://raw.githubusercontent.com/flaafix/AetrisVPN-white-list-lite/refs/heads/main/AetrisVPN.txt",
     "https://raw.githubusercontent.com/hiztin/VLESS-PO-GRIBI/main/deploy/subscriptions/1.txt",
-    "https://raw.githubusercontent.com/Kedoni/VPN-Sub/refs/heads/main/Hal.txt"
+    "https://raw.githubusercontent.com/Kedoni/VPN-Sub/refs/heads/main/Hal.txt",
+    "https://vpn.zotus.ru/sub.php",
+    "https://raw.githubusercontent.com/ShadowException/VPN/refs/heads/main/configs/VPN-cat"
 ]
 
 OUTPUT_FILE = "output.txt"
